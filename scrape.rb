@@ -7,8 +7,7 @@ require 'optparse'
 require 'ostruct'
 
 module BigIQKidsScraper
-  URLS = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth']
-  .map {|ordinal| "http://www.bigiqkids.com/SpellingVocabulary/Lessons/wordlistSpelling#{ordinal}Grade.shtml"}
+  GRADES = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth']
 
   class Options
     def self.output_options
@@ -43,6 +42,8 @@ module BigIQKidsScraper
   end
 
   class SpellingWords
+    URLS = GRADES.map {|grade| "http://www.bigiqkids.com/SpellingVocabulary/Lessons/wordlistSpelling#{grade}Grade.shtml"}
+
     attr_reader :grade, :url
 
     def initialize(grade)
