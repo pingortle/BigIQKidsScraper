@@ -1,11 +1,15 @@
 require 'rubygems'
+
+require 'json'
 require 'nokogiri'   
 require 'open-uri'
-require 'json'
-require 'ostruct'
 require 'optparse'
+require 'ostruct'
 
 module BigIQKidsScraper
+  URLS = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth']
+  .map {|ordinal| "http://www.bigiqkids.com/SpellingVocabulary/Lessons/wordlistSpelling#{ordinal}Grade.shtml"}
+
   class Options
     def self.output_options
       [:plaintext, :json]
@@ -37,22 +41,39 @@ module BigIQKidsScraper
       options
     end
   end
+
+  class SpellingWords
+    attr_reader :grade, :url
+
+    def initialize(grade)
+      @grade = grade
+      @url = URLS[grade - 1]
+    end
+
+    def scrape_words
+      page = Nokogiri::HTML(open(@url))
+
+      page.css('table tr td a')
+      .select {|x| x.text.split(' ').count == 1}
+      .map {|x| x.text.downcase}
+    end
+  end
 end
 
-def wordlist_to_file(wordlist, filename)
-  File.open(filename, 'w') do |file|
-    wordlist.each do |word|
+def wordlist_to_file(wordlist)
+  File.open("grade#{wordlist.grade}.wordlist", 'w') do |file|
+    wordlist.scrape_words.each do |word|
       file.puts word
     end
   end
 end
 
-def wordlist_to_json(wordlist, filename, grade)
-  File.open(filename, 'w') do |file|
+def wordlist_to_json(wordlist)
+  File.open("grade#{wordlist.grade}_wordlist.json", 'w') do |file|
     file.puts({
-      grade: grade,
+      grade: wordlist.grade,
       kind: "spelling",
-      words: wordlist,
+      words: wordlist.scrape_words,
     }.to_json)
   end
 end
@@ -61,24 +82,17 @@ options = BigIQKidsScraper::Options.parse(ARGV)
 
 TEMP_DIR = "tmp"
 
-urls = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth']
-.map {|ordinal| "http://www.bigiqkids.com/SpellingVocabulary/Lessons/wordlistSpelling#{ordinal}Grade.shtml"}
-
 (1..8).each do |grade|
-	page = Nokogiri::HTML(open(urls[grade - 1]))
-
-  wordlist = page.css('table tr td a')
-    .select {|x| x.text.split(' ').count == 1}
-    .map {|x| x.text.downcase}
+  spelling_words = BigIQKidsScraper::SpellingWords.new grade
 
   Dir.mkdir(File.join(Dir.pwd, TEMP_DIR)) unless Dir.exists? TEMP_DIR
 
   Dir.chdir(TEMP_DIR) do
     case options.output
     when :plaintext
-      wordlist_to_file(wordlist, "grade#{grade}.wordlist")
+      wordlist_to_file(spelling_words)
     when :json
-      wordlist_to_json(wordlist, "grade#{grade}_wordlist.json", grade)
+      wordlist_to_json(spelling_words)
     end
   end
 end
